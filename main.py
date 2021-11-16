@@ -78,4 +78,3 @@ model_1.add(layers.Dense(2, activation="relu", name="layer1"))
 # Below is to load saved model.
 # loaded = tf.saved_model.load(mobilenet_save_path)
 
-# Test change to file and see if this will allow me to upload to git.
