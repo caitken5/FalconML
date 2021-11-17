@@ -1,4 +1,6 @@
 import os
+import pathlib
+
 import numpy as np
 import re
 from tensorflow.keras.utils import Sequence
@@ -37,7 +39,7 @@ class FalconRetriever(Sequence):
         file_name = self.fileNames[idx]
 
         # Open the file.
-        data = np.asarray(np.load())
+        data = np.asarray(np.load(file_name))
         x_train = data
         y_train = self.y
 
@@ -49,8 +51,7 @@ class FalconFolder:
     """
 
     """
-    def __init__(self, path, dictionary={'Time', 'Pos_X', 'Pos_Y', 'Pos_Z', 'Vel_X', 'Vel_Y', 'Vel_Z', 'C_Force',
-                                         'F_Force', 'A_Force_X', 'A_Force_Y', 'A_Force_Z'}):
+    def __init__(self, path, dictionary=[]):
         self.path = path
         self.fileNames = list()
         self.dimensions = list()
@@ -88,7 +89,7 @@ class FalconFolder:
                 self.add_dimensions(temp_data.shape)
                 self.num_files += 1
 
-    def create_single_array(self, arr_file_name):
+    def create_single_array(self, arr_path_name, arr_file_name):
         # Loop through .npy file names.
         temp_data = list()
         for file_name in self.fileNames:
@@ -99,11 +100,66 @@ class FalconFolder:
         # Reshape the appended data.
         temp_array = np.asarray(np.reshape(temp_data, (-1, len(self.dict))))
         # Save the reshaped array.
+        # Save to appropriate model folder.
+        arr_file_name = os.path.join(arr_path_name, arr_file_name)
         np.save(arr_file_name, temp_array, allow_pickle=False, fix_imports=False)
         # Return the entire array to a variable.
         return temp_array
-# Create class or function for printing some graphs (try using tensorboard).
+
 
 # Create class that creates new model file folders for maintaining all associated data so the result could \
 #  be recreated.
+class ManageFileStructure:
+    def __init__(self, path_models, path_model):
+        # Initializer needs two standard path names: path to where all models are kept, and name of current model type.
+        self.pathModels = path_models
+        self.pathModel = path_model
+        self.fileNames = list()
+        self.folderNums = list()
+        self.prev_largest_fold_num = None
+        self.fullPath = None
+        self.newModelVersion = None
+        self.newModelPath = None
+        # Call def get_latest_file_path and generate new folder for latest model run.
+        self.populate_folder_names()
 
+    def add_file_names(self, filename):
+        self.fileNames.append(filename)
+
+    def populate_folder_names(self):
+        # Using paths provided, search the given folder for current path names.
+        # Join both parts of path together.
+        self.fullPath = os.path.join(self.pathModels, self.pathModel)
+        if not os.path.isdir(self.fullPath):
+            os.mkdir(self.fullPath)
+        directory_contents = os.listdir(self.fullPath)
+        for item in directory_contents:
+            if os.path.isdir(os.path.join(self.fullPath, item)):
+                self.fileNames.append(item)
+                # Parse out number associated with fileName.
+                folder_num = item.split("_")[-1]
+                self.populate_folder_numbers(folder_num)
+
+    def populate_folder_numbers(self, folder_num):
+        self.folderNums.append(int(folder_num))
+
+    def get_largest_folder_number(self):
+        if not self.folderNums:
+            self.prev_largest_fold_num = -1
+        else:
+            self.prev_largest_fold_num = max(self.folderNums)
+        return self.prev_largest_fold_num
+
+    def create_new_folder(self):
+        # Assume populate_folder_names has already filled the associated lists. Get largest value of current folder \
+        # set, add one, then create new folder. Assign name to saving directory.
+        new_val = str(self.get_largest_folder_number() + 1)
+        self.newModelVersion = self.pathModel + "_" + str(new_val)
+        self.newModelPath = os.path.join(self.fullPath, self.newModelVersion)
+        os.mkdir(self.newModelPath)
+
+    # TODO: Make function for reshaping tensors to have an extra channel after splitting data into appropriate \
+    #  training, testing, and validation functions. Name after current training model type.
+    # TODO: Create function to select desired folder number.
+    # TODO: Create function that populates a text file with relevant information, and save to current saving directory.
+# Create class or function for printing some graphs (try using tensorboard).
