@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import re
 from tensorflow.keras.utils import Sequence
 
 
@@ -46,32 +47,33 @@ class FalconRetriever(Sequence):
 # Create class that contains attributes of files that exist in desired folder.
 class FalconFolder:
     def __init__(self, path):
-        self._path = path
-        self._fileNames = list()
-        self._dimensions = list()
-        self._cForce = list()
+        self.path = path
+        self.fileNames = list()
+        self.dimensions = list()
+        self.cForce = list()
 
     def add_file_names(self, filename):
-        self._fileNames += filename
+        self.fileNames.append(filename)
 
     def add_dimensions(self, dimensions):
-        self._dimensions += dimensions
+        self.dimensions.append(dimensions)
 
     def add_c_force(self, commanded_force):
-        self._cForce += commanded_force
+        self.cForce.append(commanded_force)
 
     def add_file_names_and_c_force(self, filename):
         self.add_file_names(filename)
         # Parse the filename to get the commanded force.
-        temp_name = os.path.split(filename)
-        c_force = temp_name.split("_")[-1]
+        temp_name = re.split("[._]", filename)
+        c_force = '.'.join(temp_name[-3:-1])
         self.add_c_force(c_force)
 
     def populate_lists(self):
         for file_name in os.listdir(self.path):
-            self.add_file_names_and_c_force(file_name)
             if file_name.endswith(".npy"):
+                self.add_file_names_and_c_force(file_name)
                 f_open = os.path.join(self.path, file_name)
                 temp_data = np.load(f_open)
-                self.add_dimensions(temp_data.shape())
+                self.add_dimensions(temp_data.shape)
 
+# TODO: Create class or function for printing some graphs (try using tensorboard).
