@@ -66,6 +66,7 @@ class ManageData:
         self.fPath2ODir.extend((p_dir, o_dir, v_dir))
         self.fPath2DDir.extend((p_dir, d_dir, v_dir))
         self.cNames = c_names
+        self.cNamesLen = len(self.cNames)
         self.yIndex = self.cNames.index('C_Force')
 
     def add_file_names(self, filename):
@@ -97,7 +98,7 @@ class ManageData:
                 self.add_file_names_and_c_force(file_name)
                 f_open = os.path.join(sf_dir_str, file_name)
                 temp_data = np.load(f_open)
-                self.add_dimensions(np.asarray(temp_data.shape))
+                self.add_dimensions(temp_data.shape[0])
                 self.num_files += 1
         self.save_populated_lists()
 
@@ -126,17 +127,29 @@ class ManageData:
         l_file = 'l_file.txt'
         n_folder = "/".join(self.fPath2DDir)
         l_file = "/".join((n_folder, l_file))
-        temp_list = np.array([str(self.num_files), str(self.yIndex), str(len(self.cNames))])
+        temp_list = np.array([str(self.num_files), str(self.yIndex), str(self.cNamesLen)])
         np.savetxt(l_file, temp_list, fmt="%s")
         # Save second file with data containing fileNames, dimensions, and cForce
         att_file = 'att_file.txt'
         att_file = "/".join((n_folder, att_file))
-        dimensions = [col[0] for col in self.dimensions]
-        temp_arr = np.transpose(np.vstack([np.asarray(self.fileNames), dimensions, np.asarray(self.cForce)]))
+        temp_arr = np.transpose(np.vstack([np.asarray(self.fileNames), np.asarray(self.dimensions),
+                                           np.asarray(self.cForce)]))
         np.savetxt(att_file, temp_arr, fmt="%s")
 
     def get_populated_lists(self):
-        # TODO: Retrieve populated lists.
+        # Retrieve populated lists.
+        # Load associated l_file.
+        n_file = "/".join(self.fPath2DDir)
+        l_file = "/".join((n_file, "l_file.txt"))
+        att_file = "/".join((n_file, "att_file.txt"))
+        temp_list = np.loadtxt(l_file)
+        self.num_files = int(temp_list[0])
+        self.yIndex = int(temp_list[1])
+        self.cNamesLen = int(temp_list[2])
+        temp_arr = np.loadtxt(att_file, dtype='str')
+        self.fileNames = list(temp_arr[:, 0])
+        self.dimensions = list(temp_arr[:, 1])
+        self.cForce = list(temp_arr[:, 2])
         print("Called ManageData.get_populated_lists.")
 
     def generate_graph_and_statistics(self, data, name):
@@ -147,8 +160,8 @@ class ManageData:
         print("Called ManageData.make_ttv_split.")
         y_data = data[:, self.yIndex]
         x_data = np.delete(arr=data, obj=self.yIndex, axis=1)
-        x_tav, x_test, y_tav, y_test = train_test_split(x_data, y_data, test_size=0.2, random_state=42, stratify=y_data)
-        x_train, x_val, y_train, y_val = train_test_split(x_tav, y_tav, test_size=0.2, random_state=42, stratify=y_tav)
+        x_tav, x_test, y_tav, y_test = train_test_split(x_data, y_data, test_size=0.2, stratify=y_data)
+        x_train, x_val, y_train, y_val = train_test_split(x_tav, y_tav, test_size=0.2, stratify=y_tav)
         self.add_arr2sub(self.fPath2DDirSub[0], x_train, y_train)
         self.add_arr2sub(self.fPath2DDirSub[1], x_test, y_test)
         self.add_arr2sub(self.fPath2DDirSub[2], x_val, y_val)
@@ -167,9 +180,21 @@ class ManageData:
         # Save y.
         np.save(y_name, y, allow_pickle=False, fix_imports=False)
 
+    def load_sub2arr(self, f_name):
+        ddir_str = "/".join(self.fPath2DDir)
+        path = "/".join((ddir_str, f_name))
+        x_name = "/".join((path, "x.npy"))
+        y_name = "/".join((path, "y.npy"))
+        x = np.load(x_name)
+        y = np.load(y_name)
+        return x, y
+
     def load_arr(self):
-        # TODO: Load desired array into corresponding workspace.
-        print("Called ManageData.load_arr.")
+        # Load desired array into corresponding workspace.
+        x_train, y_train = self.load_sub2arr(self.fPath2DDirSub[0])
+        x_test, y_test = self.load_sub2arr(self.fPath2DDirSub[1])
+        x_val, y_val = self.load_sub2arr(self.fPath2DDirSub[2])
+        return x_train, x_test, x_val, y_train, y_test, y_val
 
 
 # Create class that creates new model file folders for maintaining all associated data so the result could \

@@ -46,7 +46,8 @@ if not os.path.isdir(check):
 # If the sub-directory already exists, then don't need to do a bunch.
 else:
     data_manager.get_populated_lists()
-    data_manager.load_arr()  # 6 new variables will take the data passed by the function.
+    x_train, x_test, x_val, y_train, y_test, y_val = data_manager.load_arr()  # 6 new variables will take the data \
+    # passed by the function.
     print(d_version, " exists. Loading required data...")
 # Declare filename to save the new array to.
 model_manager = MLFunctions.ManageFileStructure(directory, m_type, model_name)
@@ -70,6 +71,7 @@ loss_ = tf.keras.losses.MeanSquaredError()  # Loss should probably be mean squar
 
 # region 4: Define the Network
 # Define the layers of the model.
+input_shape = 9
 model = Sequential()
 model.add(keras.Input(shape=input_shape))
 model.add(layers.Dense(11, activation="relu", name="layer1"))
