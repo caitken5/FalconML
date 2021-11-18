@@ -1,9 +1,15 @@
+import itertools
 import os
 import pathlib
 
 import numpy as np
+import sklearn
+import pandas as pd
 import re
+import itertools
+import seaborn as sns
 from tensorflow.keras.utils import Sequence
+from sklearn.model_selection import train_test_split
 
 
 # Create class or function here for loading in each text file.
@@ -47,19 +53,20 @@ class FalconRetriever(Sequence):
 
 
 # Create class that contains attributes of files that exist in desired folder.
-class FalconFolder:
-    """
-
-    """
-    def __init__(self, path, dictionary=[]):
-        self.path = path
+class ManageData:
+    def __init__(self, p_dir, o_dir, d_dir, v_dir, c_names=[]):
+        self.fPath2ODir = list()
+        self.fPath2DDir = list()
+        self.fPath2DDirSub = ['Train', 'Test', 'Val']
         self.fileNames = list()
         self.dimensions = list()
         self.cForce = list()
-        # Set default names for columns in dictionary. Use override function add_dict if array columns change.
-        self.dict = dictionary
         self.num_files = 0
-        self.model_name = None
+        # Populate current attributes given input data.
+        self.fPath2ODir.extend((p_dir, o_dir, v_dir))
+        self.fPath2DDir.extend((p_dir, d_dir, v_dir))
+        self.cNames = c_names
+        self.yIndex = self.cNames.index('C_Force')
 
     def add_file_names(self, filename):
         self.fileNames.append(filename)
@@ -71,7 +78,7 @@ class FalconFolder:
         self.cForce.append(commanded_force)
 
     def add_dict(self, dictionary):
-        self.dict = dictionary
+        self.cNames = dictionary
 
     def add_file_names_and_c_force(self, filename):
         self.add_file_names(filename)
@@ -81,45 +88,100 @@ class FalconFolder:
         self.add_c_force(c_force)
 
     def populate_lists(self):
-        for file_name in os.listdir(self.path):
+        sf_dir_str = "/".join(self.fPath2ODir)
+        # Create new sub_folder.
+        ddir_str = "/".join(self.fPath2DDir)
+        os.mkdir(ddir_str)
+        for file_name in os.listdir(sf_dir_str):
             if file_name.endswith(".npy"):
                 self.add_file_names_and_c_force(file_name)
-                f_open = os.path.join(self.path, file_name)
+                f_open = os.path.join(sf_dir_str, file_name)
                 temp_data = np.load(f_open)
-                self.add_dimensions(temp_data.shape)
+                self.add_dimensions(np.asarray(temp_data.shape))
                 self.num_files += 1
+        self.save_populated_lists()
 
-    def create_single_array(self, arr_path_name, arr_file_name):
+    def create_single_array(self):
+        odir_str = "/".join(self.fPath2ODir)
+        ddir_str = "/".join(self.fPath2DDir)
         # Loop through .npy file names.
         temp_data = list()
         for file_name in self.fileNames:
             # Because of populate_lists function, filenames are automatically .npy files.
-            f_open = os.path.join(self.path, file_name)
+            f_open = os.path.join(odir_str, file_name)
             temp_data_piece = np.load(f_open)
             temp_data = np.append(temp_data, temp_data_piece)
         # Reshape the appended data.
-        temp_array = np.asarray(np.reshape(temp_data, (-1, len(self.dict))))
-        # Save the reshaped array.
-        # Save to appropriate model folder.
-        arr_file_name = os.path.join(arr_path_name, arr_file_name)
-        np.save(arr_file_name, temp_array, allow_pickle=False, fix_imports=False)
-        # Return the entire array to a variable.
-        return temp_array
+        temp_array = np.asarray(np.reshape(temp_data, (-1, len(self.cNames))))
+        # Save the reshaped array. Save to appropriate model folder.
+        name_arr = "/".join((ddir_str, self.fPath2DDir[-1]))
+        # self.generate_graph_and_statistics(temp_array, name_arr)
+        np.save(name_arr, temp_array, allow_pickle=False, fix_imports=False)
+        x_train, x_test, x_val, y_train, y_test, y_val = self.make_ttv_split(temp_array)  # Return 6 arrays.
+        return x_train, x_test, x_val, y_train, y_test, y_val
+
+    def save_populated_lists(self):
+        # Save populated lists.
+        # Save one file with data containing num_files, cNames, and yIndex.
+        l_file = 'l_file.txt'
+        n_folder = "/".join(self.fPath2DDir)
+        l_file = "/".join((n_folder, l_file))
+        temp_list = np.array([str(self.num_files), str(self.yIndex), str(len(self.cNames))])
+        np.savetxt(l_file, temp_list, fmt="%s")
+        # Save second file with data containing fileNames, dimensions, and cForce
+        att_file = 'att_file.txt'
+        att_file = "/".join((n_folder, att_file))
+        dimensions = [col[0] for col in self.dimensions]
+        temp_arr = np.transpose(np.vstack([np.asarray(self.fileNames), dimensions, np.asarray(self.cForce)]))
+        np.savetxt(att_file, temp_arr, fmt="%s")
+
+    def get_populated_lists(self):
+        # TODO: Retrieve populated lists.
+        print("Called ManageData.get_populated_lists.")
+
+    def generate_graph_and_statistics(self, data, name):
+        # TODO: Generate graph of data using seaborn, and table of statistics using pandas. Display and save both.
+        print("Called ManageData.generate_graph.")
+
+    def make_ttv_split(self, data):
+        print("Called ManageData.make_ttv_split.")
+        y_data = data[:, self.yIndex]
+        x_data = np.delete(arr=data, obj=self.yIndex, axis=1)
+        x_tav, x_test, y_tav, y_test = train_test_split(x_data, y_data, test_size=0.2, random_state=42, stratify=y_data)
+        x_train, x_val, y_train, y_val = train_test_split(x_tav, y_tav, test_size=0.2, random_state=42, stratify=y_tav)
+        self.add_arr2sub(self.fPath2DDirSub[0], x_train, y_train)
+        self.add_arr2sub(self.fPath2DDirSub[1], x_test, y_test)
+        self.add_arr2sub(self.fPath2DDirSub[2], x_val, y_val)
+        return x_train, x_test, x_val, y_train, y_test, y_val
+
+    def add_arr2sub(self, f_name, x, y):
+        # Create function that will add the numpy array to the corresponding sub folder.
+        ddir_str = "/".join(self.fPath2DDir)
+        path = "/".join((ddir_str, f_name))
+        x_name = "/".join((path, "x"))
+        y_name = "/".join((path, "y"))
+        # Create folder to hold variables.
+        os.mkdir(path)
+        # Save x.
+        np.save(x_name, x, allow_pickle=False, fix_imports=False)
+        # Save y.
+        np.save(y_name, y, allow_pickle=False, fix_imports=False)
+
+    def load_arr(self):
+        # TODO: Load desired array into corresponding workspace.
+        print("Called ManageData.load_arr.")
 
 
 # Create class that creates new model file folders for maintaining all associated data so the result could \
 #  be recreated.
 class ManageFileStructure:
-    def __init__(self, path_models, path_model):
+    def __init__(self, project_directory, path_models, path_model):
         # Initializer needs two standard path names: path to where all models are kept, and name of current model type.
-        self.pathModels = path_models
-        self.pathModel = path_model
+        self.fPath2CurrDir = list()
         self.fileNames = list()
         self.folderNums = list()
-        self.prev_largest_fold_num = None
-        self.fullPath = None
-        self.newModelVersion = None
-        self.newModelPath = None
+        self.prev_num = int()
+        self.fPath2CurrDir.extend((project_directory, path_models, path_model))
         # Call def get_latest_file_path and generate new folder for latest model run.
         self.populate_folder_names()
 
@@ -129,12 +191,12 @@ class ManageFileStructure:
     def populate_folder_names(self):
         # Using paths provided, search the given folder for current path names.
         # Join both parts of path together.
-        self.fullPath = os.path.join(self.pathModels, self.pathModel)
-        if not os.path.isdir(self.fullPath):
-            os.mkdir(self.fullPath)
-        directory_contents = os.listdir(self.fullPath)
+        dir_str = "/".join(self.fPath2CurrDir)
+        if not os.path.isdir(dir_str):
+            os.mkdir(dir_str)
+        directory_contents = os.listdir(dir_str)
         for item in directory_contents:
-            if os.path.isdir(os.path.join(self.fullPath, item)):
+            if os.path.isdir(os.path.join(dir_str, item)):
                 self.fileNames.append(item)
                 # Parse out number associated with fileName.
                 folder_num = item.split("_")[-1]
@@ -145,18 +207,18 @@ class ManageFileStructure:
 
     def get_largest_folder_number(self):
         if not self.folderNums:
-            self.prev_largest_fold_num = -1
+            self.prev_num = -1
         else:
-            self.prev_largest_fold_num = max(self.folderNums)
-        return self.prev_largest_fold_num
+            self.prev_num = max(self.folderNums)
+        return self.prev_num
 
     def create_new_folder(self):
         # Assume populate_folder_names has already filled the associated lists. Get largest value of current folder \
         # set, add one, then create new folder. Assign name to saving directory.
         new_val = str(self.get_largest_folder_number() + 1)
-        self.newModelVersion = self.pathModel + "_" + str(new_val)
-        self.newModelPath = os.path.join(self.fullPath, self.newModelVersion)
-        os.mkdir(self.newModelPath)
+        v_str = self.fPath2CurrDir[-1] + "_" + str(new_val)
+        self.fPath2CurrDir.append(v_str)
+        os.mkdir("/".join(self.fPath2CurrDir))
 
     # TODO: Make function for reshaping tensors to have an extra channel after splitting data into appropriate \
     #  training, testing, and validation functions. Name after current training model type.
