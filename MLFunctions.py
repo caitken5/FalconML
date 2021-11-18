@@ -3,11 +3,10 @@ import os
 import pathlib
 
 import numpy as np
-import sklearn
 import pandas as pd
 import re
-import itertools
 import seaborn as sns
+import matplotlib.pyplot as plt
 from tensorflow.keras.utils import Sequence
 from sklearn.model_selection import train_test_split
 
@@ -116,7 +115,7 @@ class ManageData:
         temp_array = np.asarray(np.reshape(temp_data, (-1, len(self.cNames))))
         # Save the reshaped array. Save to appropriate model folder.
         name_arr = "/".join((ddir_str, self.fPath2DDir[-1]))
-        # self.generate_graph_and_statistics(temp_array, name_arr)
+        self.generate_graph_and_statistics(temp_array, name_arr)
         np.save(name_arr, temp_array, allow_pickle=False, fix_imports=False)
         x_train, x_test, x_val, y_train, y_test, y_val = self.make_ttv_split(temp_array)  # Return 6 arrays.
         return x_train, x_test, x_val, y_train, y_test, y_val
@@ -154,6 +153,13 @@ class ManageData:
 
     def generate_graph_and_statistics(self, data, name):
         # TODO: Generate graph of data using seaborn, and table of statistics using pandas. Display and save both.
+        # Convert data to pandas dataframe.
+        data = pd.DataFrame(data, columns=self.cNames)
+        # Note to self... probably shouldn't do the entire pandas array but select only a few attributes.
+        my_plot = sns.pairplot(data, corner=True)
+        # fig = my_plot.get_figure()
+        # fig.savefig()
+        my_plot.show()
         print("Called ManageData.generate_graph.")
 
     def make_ttv_split(self, data):
@@ -245,8 +251,4 @@ class ManageFileStructure:
         self.fPath2CurrDir.append(v_str)
         os.mkdir("/".join(self.fPath2CurrDir))
 
-    # TODO: Make function for reshaping tensors to have an extra channel after splitting data into appropriate \
-    #  training, testing, and validation functions. Name after current training model type.
-    # TODO: Create function to select desired folder number.
-    # TODO: Create function that populates a text file with relevant information, and save to current saving directory.
 # Create class or function for printing some graphs (try using tensorboard).
