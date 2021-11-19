@@ -1,7 +1,4 @@
-import itertools
 import os
-import pathlib
-
 import numpy as np
 import pandas as pd
 import re
@@ -53,7 +50,9 @@ class FalconRetriever(Sequence):
 
 # Create class that contains attributes of files that exist in desired folder.
 class ManageData:
-    def __init__(self, p_dir, o_dir, d_dir, v_dir, c_names=[]):
+    def __init__(self, p_dir, o_dir, d_dir, v_dir, c_names=None):
+        if c_names is None:
+            c_names = []
         self.fPath2ODir = list()
         self.fPath2DDir = list()
         self.fPath2DDirSub = ['Train', 'Test', 'Val']
@@ -67,6 +66,7 @@ class ManageData:
         self.cNames = c_names
         self.cNamesLen = len(self.cNames)
         self.yIndex = self.cNames.index('C_Force')
+        self.cNamesWanted = None
 
     def add_file_names(self, filename):
         self.fileNames.append(filename)
@@ -113,11 +113,13 @@ class ManageData:
             temp_data = np.append(temp_data, temp_data_piece)
         # Reshape the appended data.
         temp_array = np.asarray(np.reshape(temp_data, (-1, len(self.cNames))))
+        c_names_drop = ['Time', 'Pos_Y', 'Pos_Z', 'Vel_Y', 'Vel_Z', 'A_Force_X', 'A_Force_Y']
+        # temp_array = self.remove_col(temp_array, c_names_drop)  # this function is not currently working.
         # Save the reshaped array. Save to appropriate model folder.
         name_arr = "/".join((ddir_str, self.fPath2DDir[-1]))
-        self.generate_graph_and_statistics(temp_array, name_arr)
         np.save(name_arr, temp_array, allow_pickle=False, fix_imports=False)
         x_train, x_test, x_val, y_train, y_test, y_val = self.make_ttv_split(temp_array)  # Return 6 arrays.
+        self.generate_graph_and_statistics(temp_array, name_arr)
         return x_train, x_test, x_val, y_train, y_test, y_val
 
     def save_populated_lists(self):
@@ -152,15 +154,19 @@ class ManageData:
         print("Called ManageData.get_populated_lists.")
 
     def generate_graph_and_statistics(self, data, name):
-        # TODO: Generate graph of data using seaborn, and table of statistics using pandas. Display and save both.
+        # Generate graph of data using seaborn, and table of statistics using pandas. Display and save both.
         # Convert data to pandas dataframe.
         data = pd.DataFrame(data, columns=self.cNames)
         # Note to self... probably shouldn't do the entire pandas array but select only a few attributes.
-        my_plot = sns.pairplot(data, corner=True)
-        # fig = my_plot.get_figure()
-        # fig.savefig()
-        my_plot.show()
-        print("Called ManageData.generate_graph.")
+        # sns.pairplot(data[['Pos_X', 'Vel_X', 'C_Force', 'A_Force_Z']], corner=True)
+        # plt.savefig(name)
+        # plt.show()  # TODO: Unsuppress this when done checking stats saving.
+        # TODO: Generate statistics for the data.
+        data_stats = data.describe().transpose()
+        data_stats = data_stats.to_numpy()
+        name = "_".join((name, "stats.txt"))
+        pd.to_csv(name, data_stats, fmt="%s")
+        print("Called ManageData.generate_graph_and_statistics.")
 
     def make_ttv_split(self, data):
         print("Called ManageData.make_ttv_split.")
@@ -201,6 +207,19 @@ class ManageData:
         x_test, y_test = self.load_sub2arr(self.fPath2DDirSub[1])
         x_val, y_val = self.load_sub2arr(self.fPath2DDirSub[2])
         return x_train, x_test, x_val, y_train, y_test, y_val
+
+    def remove_col(self, data, c_names_drop):
+        # Function that will remove selected columns from the data.
+        # Convert names in array to values.
+        c_num_drop = list()
+        for i, e in enumerate(c_names_drop):
+            print(e)  # self.cNames.index(e)
+            c_num_drop.append(self.cNames.index(e))
+        c_num_drop = np.asarray(c_num_drop)
+        data = np.delete(data, c_num_drop)
+        self.cNamesWanted = np.delete(self.cNames, c_num_drop)
+        print("Called ManageData.remove_col.")
+        return data
 
 
 # Create class that creates new model file folders for maintaining all associated data so the result could \

@@ -2,6 +2,8 @@
 
 # region 0: Boilerplate
 import os
+
+import matplotlib.pyplot as plt
 import numpy as np
 import sklearn
 import tensorflow as tf
@@ -34,6 +36,8 @@ d_folder = 'Data'
 log_folder = 'Logs/Fit'
 m_type = 'Models'
 
+# TODO: Multiply C_Force by -1 to match the values produced by the sensor!!!!
+
 # Create ManageData object.
 data_manager = MLFunctions.ManageData(directory, o_folder, d_folder, d_version, column_names)
 # Check to see if the desired version of data has already been created and separated.
@@ -42,7 +46,9 @@ if not os.path.isdir(check):
     print(d_version, " does not exist. Making required files in directory...")
     # Create numpy array and save in new directory folder.
     data_manager.populate_lists()
-    x_train, x_test, x_val, y_train, y_test, y_val = data_manager.create_single_array()
+    x_train, x_test, x_val, y_train, y_test, y_val, my_plot = data_manager.create_single_array()
+    # TODO: Convert the variables to tensors.
+
 # If the sub-directory already exists, then don't need to do a bunch.
 else:
     data_manager.get_populated_lists()
@@ -81,15 +87,18 @@ model.compile(optimizer=optimizer_, loss=loss_)
 # TODO: Finish building the model, ensure all values are chosen using hyperparameters so that they can be saved in the \
 #  text file or different model files.
 # Display the model and save the graph.
+# TODO: Visualize the model using tensorboard. Save these images to appropriate model file.
+tracking_address = model_manager.fPath2CurrDir  # The path to the model file.
 # endregion
+
 
 # region 5: Train the Network
 # model.fit(my parameters here)
 # endregion
 
 # region 6: Perform Inference
-# TODO: Do this using tensorboard if possible.
-tracking_address = model_manager.fullPath  # The path of the log file.
+# TODO: Visualize the training results. Save the images to appropriate log file.
+tracking_address = log_manager.fPath2CurrDir  # The path of the log file.
 if __name__ == "__main__":
     tb = program.TensorBoard()
     tb.configure(argv=[None, '--logdir', tracking_address])
