@@ -125,10 +125,12 @@ class ManageData:
     def save_populated_lists(self):
         # Save populated lists.
         # Save one file with data containing num_files, cNames, and yIndex.
+        # Note which dataset was used to train the model.
         l_file = 'l_file.txt'
         n_folder = "/".join(self.fPath2DDir)
         l_file = "/".join((n_folder, l_file))
-        temp_list = np.array([str(self.num_files), str(self.yIndex), str(self.cNamesLen)])
+        v_dir = self.fPath2DDir[-1]
+        temp_list = np.array([str(self.num_files), str(self.yIndex), str(self.cNamesLen), str(v_dir)])
         np.savetxt(l_file, temp_list, fmt="%s")
         # Save second file with data containing fileNames, dimensions, and cForce
         att_file = 'att_file.txt'
@@ -143,7 +145,7 @@ class ManageData:
         n_file = "/".join(self.fPath2DDir)
         l_file = "/".join((n_file, "l_file.txt"))
         att_file = "/".join((n_file, "att_file.txt"))
-        temp_list = np.loadtxt(l_file)
+        temp_list = np.loadtxt(l_file, dtype='str')
         self.num_files = int(temp_list[0])
         self.yIndex = int(temp_list[1])
         self.cNamesLen = int(temp_list[2])
@@ -163,9 +165,8 @@ class ManageData:
         # plt.show()  # TODO: Unsuppress this when done checking stats saving.
         # TODO: Generate statistics for the data.
         data_stats = data.describe().transpose()
-        data_stats = data_stats.to_numpy()
-        name = "_".join((name, "stats.txt"))
-        pd.to_csv(name, data_stats, fmt="%s")
+        name = "_".join((name, "stats.csv"))
+        data_stats.to_csv(name)  # Default write mode is string.
         print("Called ManageData.generate_graph_and_statistics.")
 
     def make_ttv_split(self, data):

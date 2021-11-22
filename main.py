@@ -3,8 +3,9 @@
 # region 0: Boilerplate
 import os
 
-import matplotlib.pyplot as plt
+# May need to: import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import sklearn
 import tensorflow as tf
 import keras
@@ -12,7 +13,6 @@ import keras
 # Import specific modules form packages.
 from tensorflow.keras.models import Sequential
 from tensorflow.keras import layers
-from sklearn.model_selection import train_test_split
 from tensorboard import program
 
 # My classes and functions.
@@ -35,8 +35,7 @@ o_folder = 'CleanedForces'
 d_folder = 'Data'
 log_folder = 'Logs/Fit'
 m_type = 'Models'
-
-# TODO: Multiply C_Force by -1 to match the values produced by the sensor!!!!
+hype_name = "hyper_parameters.txt"
 
 # Create ManageData object.
 data_manager = MLFunctions.ManageData(directory, o_folder, d_folder, d_version, column_names)
@@ -46,15 +45,18 @@ if not os.path.isdir(check):
     print(d_version, " does not exist. Making required files in directory...")
     # Create numpy array and save in new directory folder.
     data_manager.populate_lists()
-    x_train, x_test, x_val, y_train, y_test, y_val, my_plot = data_manager.create_single_array()
-    # TODO: Convert the variables to tensors.
-
+    # Check returned dtype of y_train, y_test, and y_val.
+    x_train, x_test, x_val, y_train, y_test, y_val = data_manager.create_single_array()
 # If the sub-directory already exists, then don't need to do a bunch.
 else:
     data_manager.get_populated_lists()
     x_train, x_test, x_val, y_train, y_test, y_val = data_manager.load_arr()  # 6 new variables will take the data \
     # passed by the function.
     print(d_version, " exists. Loading required data...")
+# Convert the variables to tensors. Make sure they are also float64 rather than double (equivalents).
+x_train = tf.convert_to_tensor(x_train, dtype=tf.float64)
+x_test = tf.convert_to_tensor(x_test, dtype=tf.float64)
+x_val = tf.convert_to_tensor(x_val, dtype=tf.float64)
 # Declare filename to save the new array to.
 model_manager = MLFunctions.ManageFileStructure(directory, m_type, model_name)
 model_manager.create_new_folder()
@@ -64,15 +66,29 @@ log_manager.create_new_folder()
 # endregion
 
 # region 3: Define Hyper-Parameters
-num_epochs = 50
 numSamples = 10  # The number of time samples included in each back of the array.
 batch_size = 50
-epochs = 20
+epochs_ = 20
+act_1 = 'relu'
+act_2 = 'linear'
 learning_rate = 0.001  # Default ADAM learning rate.
 beta1 = 0.9
 beta2 = 0.999
 optimizer_ = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=beta1, beta_2=beta2)
-loss_ = tf.keras.losses.MeanSquaredError()  # Loss should probably be mean squared error.
+loss_ = tf.keras.losses.MeanSquaredError()  # Loss can be mean squared error.
+metrics_ = [tf.keras.metrics.RootMeanSquaredError()]  # A valid metric that takes the root of the mean squared error \
+# so that outlier data is penalized more, as a lot of outlier data is probably caused by user interaction.
+# Save hyper-parameters to model folder.
+hype_columns = ['Batch Size', 'Number of Epochs', 'Activation Function 1', 'Activation Function 2',
+                'Optimizer Function', 'Optimizer Learning Rate', 'Optimizer Beta 1', 'Optimizer Beta 2',
+                'Loss Function', 'Metrics']
+hyper_parameters = [batch_size, epochs_, act_1, act_2, optimizer_, learning_rate, beta1, beta2, loss_, metrics_]
+# Define pandas array to save the hyper-parameters to.
+hyper_parameters = pd.DataFrame(hyper_parameters, index=hype_columns)
+hype_folder = "/".join(model_manager.fPath2CurrDir)
+hype_file = "_".join((model_manager.fPath2CurrDir[-1], hype_name))
+hype_folder = "/".join((hype_folder, hype_file))
+hyper_parameters.to_csv(hype_folder)  # Default write mode is string.
 # endregion
 
 # region 4: Define the Network
@@ -80,20 +96,22 @@ loss_ = tf.keras.losses.MeanSquaredError()  # Loss should probably be mean squar
 input_shape = 9
 model = Sequential()
 model.add(keras.Input(shape=input_shape))
-model.add(layers.Dense(11, activation="relu", name="layer1"))
-model.add(layers.Dense(5, activation="relu", name="layer2"))
-model.add(layers.Dense(1, activation='linear'))
+# Add normalization layer. Allows easier convergence of the model.
+model.add(tf.keras.layers.LayerNormalization(axis=1))  # To normalize across the axes within each example.
+model.add(layers.Dense(11, activation=act_1, name="layer1"))
+model.add(layers.Dense(5, activation=act_1, name="layer2"))
+model.add(layers.Dense(1, activation=act_2))
 model.compile(optimizer=optimizer_, loss=loss_)
-# TODO: Finish building the model, ensure all values are chosen using hyperparameters so that they can be saved in the \
-#  text file or different model files.
+# Make sure all data is saved to model visual.
 # Display the model and save the graph.
-# TODO: Visualize the model using tensorboard. Save these images to appropriate model file.
-tracking_address = model_manager.fPath2CurrDir  # The path to the model file.
+tracking_address_mod = "/".join(model_manager.fPath2CurrDir)  # The path to the model file.
+tracking_address_mod = "/".join((tracking_address_mod, ".png"))
+tf.keras.utils.plot_model(model, to_file="/".join(model_manager.fPath2CurrDir), show_shapes=True)
 # endregion
 
-
 # region 5: Train the Network
-# model.fit(my parameters here)
+history = model.fit(x_train, y_train, batch_size=64, epochs=epochs_, validation_data=(x_val, y_val))
+# Let the fit function equal 'history' to allow for saving and collection of data.
 # endregion
 
 # region 6: Perform Inference
@@ -104,6 +122,9 @@ if __name__ == "__main__":
     tb.configure(argv=[None, '--logdir', tracking_address])
     url = tb.launch()
     print(f"Tensorflow listening on ")
+
+# Evaluate model on the testing data.
+results = model.evaluate(x_test, y_test, batch_size=128)
 # endregion
 
 # region 7: Output
