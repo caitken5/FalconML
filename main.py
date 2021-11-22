@@ -14,6 +14,7 @@ import keras
 from tensorflow.keras.models import Sequential
 from tensorflow.keras import layers
 from tensorboard import program
+from contextlib import redirect_stdout
 
 # My classes and functions.
 import MLFunctions
@@ -54,9 +55,9 @@ else:
     # passed by the function.
     print(d_version, " exists. Loading required data...")
 # Convert the variables to tensors. Make sure they are also float64 rather than double (equivalents).
-x_train = tf.convert_to_tensor(x_train, dtype=tf.float64)
-x_test = tf.convert_to_tensor(x_test, dtype=tf.float64)
-x_val = tf.convert_to_tensor(x_val, dtype=tf.float64)
+x_train = tf.convert_to_tensor(np.expand_dims(x_train, axis=2), dtype=tf.float64)
+x_test = tf.convert_to_tensor(np.expand_dims(x_test, axis=2), dtype=tf.float64)
+x_val = tf.convert_to_tensor(np.expand_dims(x_val, axis=2), dtype=tf.float64)
 # Declare filename to save the new array to.
 model_manager = MLFunctions.ManageFileStructure(directory, m_type, model_name)
 model_manager.create_new_folder()
@@ -67,8 +68,8 @@ log_manager.create_new_folder()
 
 # region 3: Define Hyper-Parameters
 numSamples = 10  # The number of time samples included in each back of the array.
-batch_size = 50
-epochs_ = 20
+batch_size = 64
+epochs_ = 5
 act_1 = 'relu'
 act_2 = 'linear'
 learning_rate = 0.001  # Default ADAM learning rate.
@@ -93,39 +94,44 @@ hyper_parameters.to_csv(hype_folder)  # Default write mode is string.
 
 # region 4: Define the Network
 # Define the layers of the model.
-input_shape = 9
-model = Sequential()
-model.add(keras.Input(shape=input_shape))
-# Add normalization layer. Allows easier convergence of the model.
-model.add(tf.keras.layers.LayerNormalization(axis=1))  # To normalize across the axes within each example.
-model.add(layers.Dense(11, activation=act_1, name="layer1"))
-model.add(layers.Dense(5, activation=act_1, name="layer2"))
-model.add(layers.Dense(1, activation=act_2))
-model.compile(optimizer=optimizer_, loss=loss_)
-# Make sure all data is saved to model visual.
-# Display the model and save the graph.
+input_shape = x_train.get_shape().as_list()[1:]
+# Make model using Functional API to allow naming of model.
+# TODO: Figure out how I can use Normalization in the model.
+inputs_ = tf.keras.Input(shape=input_shape)
+layer = tf.keras.layers.Dense(11, activation=act_1)(inputs_)
+layer = tf.keras.layers.Dense(5, activation=act_2)(layer)
+outputs_ = tf.keras.layers.Dense(1)(layer)
+tracking_address_file = "_".join((model_manager.fPath2CurrDir[-1], "model.txt"))
+model = keras.Model(inputs=inputs_, outputs=outputs_, name=tracking_address_file)
+model.compile(optimizer=optimizer_, loss=loss_, metrics=metrics_)
 tracking_address_mod = "/".join(model_manager.fPath2CurrDir)  # The path to the model file.
-tracking_address_mod = "/".join((tracking_address_mod, ".png"))
-tf.keras.utils.plot_model(model, to_file="/".join(model_manager.fPath2CurrDir), show_shapes=True)
+tracking_address_mod = "/".join((tracking_address_mod, tracking_address_file))
+# Try saving model summary.
+with open(tracking_address_mod, 'w') as f:
+    with redirect_stdout(f):
+        model.summary()
+# tf.keras.utils.plot_model(model, to_file="/".join(model_manager.fPath2CurrDir), show_shapes=True)
 # endregion
 
 # region 5: Train the Network
-history = model.fit(x_train, y_train, batch_size=64, epochs=epochs_, validation_data=(x_val, y_val))
+history = model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs_, validation_data=(x_val, y_val))
 # Let the fit function equal 'history' to allow for saving and collection of data.
 # endregion
 
 # region 6: Perform Inference
 # TODO: Visualize the training results. Save the images to appropriate log file.
-tracking_address = log_manager.fPath2CurrDir  # The path of the log file.
-if __name__ == "__main__":
-    tb = program.TensorBoard()
-    tb.configure(argv=[None, '--logdir', tracking_address])
-    url = tb.launch()
-    print(f"Tensorflow listening on ")
-
+tracking_address = "/".join(log_manager.fPath2CurrDir)  # The path of the log file.
+tracking_history = "_".join((log_manager.fPath2CurrDir[-1], "history.csv"))
+tracking_address = "/".join((tracking_address, tracking_history))
+hist_df = pd.DataFrame(history.history)
+# Save history to CSV.
+with open(tracking_address, mode='w') as f:
+    hist_df.to_csv(f)
 # Evaluate model on the testing data.
 results = model.evaluate(x_test, y_test, batch_size=128)
 # endregion
+
+# TODO: Test calculation time if single dataset through model.evaluate.
 
 # region 7: Output
 # Below is example of how to save tensorflow model.

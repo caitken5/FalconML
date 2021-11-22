@@ -271,4 +271,6 @@ class ManageFileStructure:
         self.fPath2CurrDir.append(v_str)
         os.mkdir("/".join(self.fPath2CurrDir))
 
+
 # Create class or function for printing some graphs (try using tensorboard).
+
