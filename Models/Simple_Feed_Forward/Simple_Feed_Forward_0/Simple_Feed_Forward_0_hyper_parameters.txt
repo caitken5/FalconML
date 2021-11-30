@@ -1,0 +1,11 @@
+,0
+Batch Size,50
+Number of Epochs,20
+Activation Function 1,relu
+Activation Function 2,linear
+Optimizer Function,<keras.optimizer_v2.adam.Adam object at 0x0000026E0B2E8F70>
+Optimizer Learning Rate,0.001
+Optimizer Beta 1,0.9
+Optimizer Beta 2,0.999
+Loss Function,<keras.losses.MeanSquaredError object at 0x0000026E0B2E8FA0>
+Metrics,[<keras.metrics.RootMeanSquaredError object at 0x0000026E0B321280>]
