@@ -26,12 +26,14 @@ print("sklearn version: ", sklearn.__version__)
 # endregion
 
 # region 1: Load Data and 2: Pre-Processing
-column_names = ['Time', 'Pos_X', 'Pos_Y', 'Pos_Z', 'Vel_X', 'Vel_Y', 'Vel_Z', 'C_Force', 'F_Force', 'A_Force_X',
-                'A_Force_Y', 'A_Force_Z']
+column_names = ['Time', 'Pos_X', 'Pos_Y', 'Pos_Z', 'Vel_X', 'Vel_Y', 'Vel_Z', 'C_Force', 'Angle_X', 'Angle_Y',
+                'Angle_Z', 'F_Force_X', 'F_Force_Y', 'F_Force_Z', 'A_Force_X', 'A_Force_Y', 'A_Force_Z',
+                'A_Force_X_Filt', 'A_Force_Y_Filt', 'A_Force_Z_Filt', 'A_Force_X_Left', 'A_Force_Y_Left',
+                'A_Force_Z_Left']
 # Define the required path names for setting up project directory management.
 directory = os.path.dirname(__file__)
 model_name = 'Simple_Feed_Forward'  # Declare model design number.
-d_version = 'v1'
+d_version = 'v3'
 o_folder = 'CleanedForces'
 d_folder = 'Data'
 log_folder = 'Logs/Fit'
