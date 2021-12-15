@@ -33,7 +33,7 @@ column_names = ['Time', 'Pos_X', 'Pos_Y', 'Pos_Z', 'Vel_X', 'Vel_Y', 'Vel_Z', 'C
 # Define the required path names for setting up project directory management.
 directory = os.path.dirname(__file__)
 model_name = 'Simple_Feed_Forward'  # Declare model design number.
-d_version = 'v3'
+d_version = 'TestSet'
 o_folder = 'CleanedForces'
 d_folder = 'Data'
 log_folder = 'Logs/Fit'

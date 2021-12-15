@@ -1,0 +1,17 @@
+Model: "Simple_Feed_Forward_4_model.txt"
+_________________________________________________________________
+ Layer (type)                Output Shape              Param #   
+=================================================================
+ input_1 (InputLayer)        [(None, 11, 1)]           0         
+                                                                 
+ dense (Dense)               (None, 11, 11)            22        
+                                                                 
+ dense_1 (Dense)             (None, 11, 5)             60        
+                                                                 
+ dense_2 (Dense)             (None, 11, 1)             6         
+                                                                 
+=================================================================
+Total params: 88
+Trainable params: 88
+Non-trainable params: 0
+_________________________________________________________________
